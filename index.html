@@ -2,7 +2,7 @@
     <meta charset="utf-8">
     <title>Poe</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-  <script src="https://puc.poecdn.net/disableWebRTC.9710cebe07429a9e8e06.js"></script><script src="https://puc.poecdn.net/tw.b9024aecac666455e183.js"></script><script src="https://puc.poecdn.net/deps.faccd16000d314dc16d5.js"></script><script src="https://puc.poecdn.net/exports.b0f0f482cdeb5302b0b9.js"></script><script src="https://puc.poecdn.net/renderer.75c73ae6b4235f62945a.js"></script><script>Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }var _react = require('react'); var _react2 = _interopRequireDefault(_react);
+  <script src="https://puc.poecdn.net/disableWebRTC.9710cebe07429a9e8e06.js"></script><script src="https://puc.poecdn.net/tw.b9024aecac666455e183.js"></script><script src="https://puc.poecdn.net/deps.faccd16000d314dc16d5.js"></script><script src="https://puc.poecdn.net/exports.b0f0f482cdeb5302b0b9.js"></script><script src="https://puc.poecdn.net/renderer.75c73ae6b4235f62945a.js"></script><script>Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; } function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }var _react = require('react'); var _react2 = _interopRequireDefault(_react);
 var _lucidereact = require('lucide-react');
 
 const VoiceNoteApp = () => {
@@ -32,7 +32,37 @@ const VoiceNoteApp = () => {
 
   // Check if we're in a secure context
   const isSecureContext = () => {
-    return window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    return window.isSecureContext || 
+           window.location.protocol === 'https:' || 
+           window.location.hostname === 'localhost' ||
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname.endsWith('.localhost');
+  };
+
+  // Get security status and suggestions
+  const getSecurityStatus = () => {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    if (protocol === 'https:') {
+      return { secure: true, message: 'Secure connection' };
+    }
+    
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return { secure: true, message: 'Localhost connection' };
+    }
+    
+    return {
+      secure: false,
+      message: 'Insecure connection detected',
+      suggestions: [
+        'Access via https:// instead of http://',
+        'Use localhost or 127.0.0.1 for local development',
+        `Try: http://localhost${port ? ':' + port : ''}`,
+        'Enable HTTPS on your development server'
+      ]
+    };
   };
 
   // Initialize audio context and analyzer
@@ -40,8 +70,9 @@ const VoiceNoteApp = () => {
     try {
       setMicrophoneError('');
 
-      if (!isSecureContext()) {
-        throw new Error('Microphone access requires HTTPS or localhost. Please use a secure connection.');
+      const securityStatus = getSecurityStatus();
+      if (!securityStatus.secure) {
+        throw new Error(`Microphone access requires a secure context. ${securityStatus.message}. Please use HTTPS or localhost.`);
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -78,13 +109,17 @@ const VoiceNoteApp = () => {
       let errorMessage = 'Unable to access microphone. ';
       
       if (error.name === 'NotAllowedError') {
-        errorMessage += 'Please allow microphone permissions and try again.';
+        errorMessage += 'Please allow microphone permissions in your browser and try again.';
       } else if (error.name === 'NotFoundError') {
         errorMessage += 'No microphone found. Please connect a microphone and try again.';
       } else if (error.name === 'NotSupportedError') {
         errorMessage += 'Your browser does not support microphone access.';
-      } else if (error.message.includes('secure')) {
-        errorMessage += 'Please use HTTPS or localhost for microphone access.';
+      } else if (error.message.includes('secure') || error.message.includes('origin')) {
+        errorMessage = 'Security Error: Microphone access requires HTTPS or localhost. ';
+        const securityStatus = getSecurityStatus();
+        if (securityStatus.suggestions) {
+          errorMessage += 'Try: ' + securityStatus.suggestions[0];
+        }
       } else {
         errorMessage += error.message || 'Unknown error occurred.';
       }
@@ -349,6 +384,9 @@ Please return the improved text:`;
     window.open('https://aeromechanic.fun', '_blank');
   };
 
+  // Get current security status for display
+  const securityStatus = getSecurityStatus();
+
   // Cleanup on unmount
   _react.useEffect.call(void 0, () => {
     return () => {
@@ -394,7 +432,18 @@ Please return the improved text:`;
       , _react2.default.createElement('div', { className: "bg-white border-b border-gray-200 shadow-sm"   ,}
         , _react2.default.createElement('div', { className: "px-6 py-4" ,}
           , _react2.default.createElement('div', { className: "flex items-center justify-between"  ,}
-            , _react2.default.createElement('h1', { className: "text-2xl font-bold text-gray-800"  ,}, "Voice Notes AI"  )
+            , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}
+              , _react2.default.createElement('h1', { className: "text-2xl font-bold text-gray-800"  ,}, "Voice Notes AI"  )
+              /* Security Status Indicator */
+              , _react2.default.createElement('div', { className: `flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                securityStatus.secure 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-red-100 text-red-700'
+              }`,}
+                , _react2.default.createElement(_lucidereact.Shield, { className: "w-3 h-3" ,} )
+                , securityStatus.secure ? 'Secure' : 'Insecure'
+              )
+            )
             , _react2.default.createElement('div', { className: "flex items-center gap-3"  ,}
               , _react2.default.createElement('button', {
                 onClick: saveToMD,
@@ -416,6 +465,26 @@ Please return the improved text:`;
         )
       )
 
+      /* Security Warning */
+      , !securityStatus.secure && (
+        _react2.default.createElement('div', { className: "bg-red-50 border-b border-red-200"  ,}
+          , _react2.default.createElement('div', { className: "px-6 py-3" ,}
+            , _react2.default.createElement('div', { className: "flex items-start gap-3"  ,}
+              , _react2.default.createElement(_lucidereact.AlertCircle, { className: "w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"    ,} )
+              , _react2.default.createElement('div', null
+                , _react2.default.createElement('p', { className: "text-red-800 font-medium" ,}, "Microphone Access Requires Secure Connection"    )
+                , _react2.default.createElement('p', { className: "text-red-700 text-sm mt-1"  ,}, "To use voice recording, please:"    )
+                , _react2.default.createElement('ul', { className: "text-red-700 text-sm mt-1 ml-4 list-disc"    ,}
+                  , _optionalChain([securityStatus, 'access', _ => _.suggestions, 'optionalAccess', _2 => _2.map, 'call', _3 => _3((suggestion, index) => (
+                    _react2.default.createElement('li', { key: index,}, suggestion)
+                  ))])
+                )
+              )
+            )
+          )
+        )
+      )
+
       /* Main Content Area - Full Width */
       , _react2.default.createElement('div', { className: "px-6 py-6" ,}
         , _react2.default.createElement('div', { className: "flex gap-6 h-screen max-h-[calc(100vh-120px)]"   ,}
@@ -426,9 +495,14 @@ Please return the improved text:`;
               , _react2.default.createElement('div', { className: "text-center",}
                 /* Error Display */
                 , microphoneError && (
-                  _react2.default.createElement('div', { className: "mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700"         ,}
-                    , _react2.default.createElement(_lucidereact.AlertCircle, { className: "w-4 h-4 flex-shrink-0"  ,} )
-                    , _react2.default.createElement('span', { className: "text-xs",}, microphoneError)
+                  _react2.default.createElement('div', { className: "mb-3 p-3 bg-red-50 border border-red-200 rounded-lg"     ,}
+                    , _react2.default.createElement('div', { className: "flex items-start gap-2 text-red-700"   ,}
+                      , _react2.default.createElement(_lucidereact.AlertCircle, { className: "w-4 h-4 flex-shrink-0 mt-0.5"   ,} )
+                      , _react2.default.createElement('div', null
+                        , _react2.default.createElement('p', { className: "text-xs font-medium" ,}, "Microphone Error" )
+                        , _react2.default.createElement('p', { className: "text-xs mt-1" ,}, microphoneError)
+                      )
+                    )
                   )
                 )
 
@@ -597,6 +671,9 @@ Please return the improved text:`;
                   )
                   , _react2.default.createElement('p', { className: "text-lg",}, "Start recording to see AI-cleaned text here"      )
                   , _react2.default.createElement('p', { className: "text-sm mt-2 text-gray-400"  ,}, "Your voice will be automatically transcribed and enhanced by AI"         )
+                  , !securityStatus.secure && (
+                    _react2.default.createElement('p', { className: "text-sm mt-2 text-red-500"  ,}, "⚠️ Secure connection required for microphone access"      )
+                  )
                 )
               )
             )
